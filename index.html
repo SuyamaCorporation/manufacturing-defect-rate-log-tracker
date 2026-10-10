@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manufacturing Defect Rate &amp; Root-Cause Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-orange-400">Defect Rate &amp; Root-Cause Tracker</h1>
+      <p class="text-gray-400 mt-1">Production quality log with PPM analysis and Pareto chart</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Entry Form -->
+      <section class="bg-gray-900 rounded-xl p-6" aria-label="Log entry form">
+        <h2 class="text-lg font-semibold text-gray-200 mb-4">New Entry</h2>
+        <div class="space-y-3">
+          <div>
+            <label for="batchId" class="block text-sm text-gray-400 mb-1">Batch ID</label>
+            <input id="batchId" type="text" placeholder="BATCH-001"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Batch ID" />
+          </div>
+          <div>
+            <label for="production" class="block text-sm text-gray-400 mb-1">Production Count</label>
+            <input id="production" type="number" min="1" placeholder="10000"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Production count" />
+          </div>
+          <div>
+            <label for="defects" class="block text-sm text-gray-400 mb-1">Defect Count</label>
+            <input id="defects" type="number" min="0" placeholder="25"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Defect count" />
+          </div>
+          <div>
+            <label for="cause" class="block text-sm text-gray-400 mb-1">Root-Cause Category</label>
+            <select id="cause"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Root-cause category">
+              <option value="Machine">Machine</option>
+              <option value="Material">Material</option>
+              <option value="Method">Method</option>
+              <option value="Manpower">Manpower</option>
+              <option value="Environment">Environment</option>
+            </select>
+          </div>
+          <div>
+            <label for="entryDate" class="block text-sm text-gray-400 mb-1">Date</label>
+            <input id="entryDate" type="date"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Entry date" />
+          </div>
+          <p id="formError" class="text-red-400 text-xs" aria-live="assertive"></p>
+          <button id="addEntry"
+            class="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
+            aria-label="Add log entry">
+            Add Entry
+          </button>
+        </div>
+      </section>
+
+      <!-- Summary Stats -->
+      <section class="lg:col-span-2 space-y-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-3 gap-3" aria-label="Summary statistics">
+          <div class="bg-gray-900 rounded-xl p-4 text-center">
+            <div id="statTotalProd" class="text-2xl font-bold text-blue-400">0</div>
+            <div class="text-xs text-gray-500 mt-1">Total Produced</div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 text-center">
+            <div id="statTotalDef" class="text-2xl font-bold text-red-400">0</div>
+            <div class="text-xs text-gray-500 mt-1">Total Defects</div>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 text-center">
+            <div id="statPPM" class="text-2xl font-bold text-orange-400">0</div>
+            <div class="text-xs text-gray-500 mt-1">Overall PPM</div>
+          </div>
+        </div>
+
+        <!-- Pareto Chart -->
+        <div class="bg-gray-900 rounded-xl p-6" aria-label="Pareto chart by root cause">
+          <h2 class="text-lg font-semibold text-gray-200 mb-4">Pareto Chart — Defects by Cause</h2>
+          <div id="paretoChart" class="space-y-2" aria-label="Pareto bar chart">
+            <p class="text-gray-600 text-sm">No data yet.</p>
+          </div>
+        </div>
+
+        <!-- 7-Day Trend -->
+        <div class="bg-gray-900 rounded-xl p-6" aria-label="7-day PPM trend">
+          <h2 class="text-lg font-semibold text-gray-200 mb-4">Last 7 Entries — PPM Trend</h2>
+          <div id="trendChart" class="space-y-2" aria-label="7-day trend chart">
+            <p class="text-gray-600 text-sm">No data yet.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Log Table -->
+    <section class="mt-6 bg-gray-900 rounded-xl p-6" aria-label="Entry log table">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-200">Entry Log</h2>
+        <div class="flex gap-2 items-center">
+          <label for="sortCol" class="text-xs text-gray-500">Sort by:</label>
+          <select id="sortCol"
+            class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
+            aria-label="Sort column">
+            <option value="date">Date</option>
+            <option value="ppm">PPM</option>
+            <option value="defects">Defects</option>
+            <option value="production">Production</option>
+          </select>
+          <button id="sortDir" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-orange-500" aria-label="Toggle sort direction">▼</button>
+          <button id="clearAll" class="bg-red-700 hover:bg-red-600 text-xs px-3 py-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400" aria-label="Clear all entries">Clear All</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" role="table" aria-label="Defect log">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 border-b border-gray-800">
+              <th class="pb-2 pr-3">Date</th>
+              <th class="pb-2 pr-3">Batch ID</th>
+              <th class="pb-2 pr-3">Produced</th>
+              <th class="pb-2 pr-3">Defects</th>
+              <th class="pb-2 pr-3">Root Cause</th>
+              <th class="pb-2 pr-3">PPM</th>
+              <th class="pb-2"></th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody" aria-live="polite">
+            <tr><td colspan="7" class="text-center text-gray-600 py-6">No entries yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'defect_tracker_v1';
+      const CAUSE_COLORS = {
+        Machine: 'bg-blue-500',
+        Material: 'bg-purple-500',
+        Method: 'bg-green-500',
+        Manpower: 'bg-yellow-500',
+        Environment: 'bg-teal-500',
+      };
+
+      let entries = [];
+      let sortCol = 'date';
+      let sortAsc = false;
+
+      // DOM
+      const batchIdEl = document.getElementById('batchId');
+      const productionEl = document.getElementById('production');
+      const defectsEl = document.getElementById('defects');
+      const causeEl = document.getElementById('cause');
+      const entryDateEl = document.getElementById('entryDate');
+      const formError = document.getElementById('formError');
+      const addEntryBtn = document.getElementById('addEntry');
+      const logTableBody = document.getElementById('logTableBody');
+      const paretoChart = document.getElementById('paretoChart');
+      const trendChart = document.getElementById('trendChart');
+      const sortColEl = document.getElementById('sortCol');
+      const sortDirEl = document.getElementById('sortDir');
+      const clearAllBtn = document.getElementById('clearAll');
+
+      function loadState() {
+        try {
+          const s = localStorage.getItem(STORAGE_KEY);
+          if (s) entries = JSON.parse(s);
+        } catch (e) { entries = []; }
+      }
+
+      function saveState() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch (e) {}
+      }
+
+      // Set default date
+      entryDateEl.value = new Date().toISOString().slice(0, 10);
+
+      function calcPPM(defects, production) {
+        if (!production) return 0;
+        return Math.round((defects / production) * 1_000_000);
+      }
+
+      function addEntry() {
+        formError.textContent = '';
+        const batchId = batchIdEl.value.trim();
+        const prod = parseInt(productionEl.value, 10);
+        const def = parseInt(defectsEl.value, 10);
+        const cause = causeEl.value;
+        const date = entryDateEl.value;
+
+        if (!batchId) { formError.textContent = 'Batch ID is required.'; return; }
+        if (!prod || prod < 1) { formError.textContent = 'Production count must be >= 1.'; return; }
+        if (isNaN(def) || def < 0) { formError.textContent = 'Defect count must be >= 0.'; return; }
+        if (def > prod) { formError.textContent = 'Defects cannot exceed production count.'; return; }
+        if (!date) { formError.textContent = 'Date is required.'; return; }
+
+        entries.push({
+          id: Date.now(),
+          date,
+          batchId,
+          production: prod,
+          defects: def,
+          cause,
+          ppm: calcPPM(def, prod),
+        });
+
+        saveState();
+        renderAll();
+        batchIdEl.value = '';
+        productionEl.value = '';
+        defectsEl.value = '';
+        entryDateEl.value = new Date().toISOString().slice(0, 10);
+        batchIdEl.focus();
+      }
+
+      function getSorted() {
+        return [...entries].sort((a, b) => {
+          let va = a[sortCol], vb = b[sortCol];
+          if (sortCol === 'date') { va = va || ''; vb = vb || ''; }
+          if (va < vb) return sortAsc ? -1 : 1;
+          if (va > vb) return sortAsc ? 1 : -1;
+          return 0;
+        });
+      }
+
+      function renderTable() {
+        logTableBody.innerHTML = '';
+        const sorted = getSorted();
+        if (sorted.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 7;
+          td.className = 'text-center text-gray-600 py-6';
+          td.textContent = 'No entries yet.';
+          tr.appendChild(td);
+          logTableBody.appendChild(tr);
+          return;
+        }
+        sorted.forEach(e => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-gray-800 hover:bg-gray-800 transition-colors';
+
+          const ppmClass = e.ppm < 1000 ? 'text-green-400' : e.ppm < 5000 ? 'text-yellow-400' : 'text-red-400';
+
+          [
+            e.date,
+            e.batchId,
+            e.production.toLocaleString(),
+            e.defects.toLocaleString(),
+            null, // cause badge
+            null, // ppm coloured
+            null, // delete
+          ].forEach((val, i) => {
+            const td = document.createElement('td');
+            td.className = 'py-2 pr-3 text-sm';
+            if (i === 4) {
+              const badge = document.createElement('span');
+              badge.className = `text-xs px-2 py-0.5 rounded-full ${CAUSE_COLORS[e.cause] || 'bg-gray-600'} text-white`;
+              badge.textContent = e.cause;
+              td.appendChild(badge);
+            } else if (i === 5) {
+              td.className += ' font-mono ' + ppmClass;
+              td.textContent = e.ppm.toLocaleString();
+            } else if (i === 6) {
+              const btn = document.createElement('button');
+              btn.className = 'text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400';
+              btn.textContent = '✕';
+              btn.setAttribute('aria-label', 'Delete entry ' + e.batchId);
+              btn.addEventListener('click', () => {
+                entries = entries.filter(en => en.id !== e.id);
+                saveState();
+                renderAll();
+              });
+              td.appendChild(btn);
+            } else {
+              td.textContent = val;
+            }
+            tr.appendChild(td);
+          });
+          logTableBody.appendChild(tr);
+        });
+      }
+
+      function renderPareto() {
+        const totals = {};
+        entries.forEach(e => { totals[e.cause] = (totals[e.cause] || 0) + e.defects; });
+        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+        const grandTotal = sorted.reduce((s, [, v]) => s + v, 0);
+
+        paretoChart.innerHTML = '';
+        if (sorted.length === 0) {
+          const p = document.createElement('p');
+          p.className = 'text-gray-600 text-sm';
+          p.textContent = 'No data yet.';
+          paretoChart.appendChild(p);
+          return;
+        }
+
+        let cumPct = 0;
+        sorted.forEach(([cause, count]) => {
+          const pct = grandTotal > 0 ? (count / grandTotal * 100) : 0;
+          cumPct += pct;
+          const row = document.createElement('div');
+          row.className = 'space-y-1';
+
+          const label = document.createElement('div');
+          label.className = 'flex justify-between text-xs text-gray-400';
+          const left = document.createElement('span');
+          left.textContent = cause;
+          const right = document.createElement('span');
+          right.textContent = `${count.toLocaleString()} defects (${pct.toFixed(1)}%) — cum ${cumPct.toFixed(1)}%`;
+          label.appendChild(left);
+          label.appendChild(right);
+
+          const barBg = document.createElement('div');
+          barBg.className = 'w-full bg-gray-700 rounded-full h-5 overflow-hidden';
+          const barFill = document.createElement('div');
+          barFill.className = `h-5 rounded-full ${CAUSE_COLORS[cause] || 'bg-gray-500'} flex items-center pl-2 text-xs text-white font-medium transition-all duration-500`;
+          barFill.style.width = pct.toFixed(1) + '%';
+          barFill.setAttribute('role', 'meter');
+          barFill.setAttribute('aria-valuenow', pct.toFixed(1));
+          barFill.setAttribute('aria-valuemin', '0');
+          barFill.setAttribute('aria-valuemax', '100');
+          barFill.setAttribute('aria-label', `${cause}: ${pct.toFixed(1)}%`);
+          if (pct > 8) barFill.textContent = pct.toFixed(1) + '%';
+          barBg.appendChild(barFill);
+          row.appendChild(label);
+          row.appendChild(barBg);
+          paretoChart.appendChild(row);
+        });
+      }
+
+      function renderTrend() {
+        const last7 = [...entries].sort((a, b) => a.date < b.date ? -1 : 1).slice(-7);
+        trendChart.innerHTML = '';
+        if (last7.length === 0) {
+          const p = document.createElement('p');
+          p.className = 'text-gray-600 text-sm';
+          p.textContent = 'No data yet.';
+          trendChart.appendChild(p);
+          return;
+        }
+
+        const maxPPM = Math.max(...last7.map(e => e.ppm), 1);
+        last7.forEach(e => {
+          const widthPct = Math.max(2, (e.ppm / maxPPM) * 100);
+          const ppmClass = e.ppm < 1000 ? 'bg-green-500' : e.ppm < 5000 ? 'bg-yellow-500' : 'bg-red-500';
+
+          const row = document.createElement('div');
+          row.className = 'flex items-center gap-2 text-xs';
+
+          const dateLabel = document.createElement('span');
+          dateLabel.className = 'text-gray-500 w-20 shrink-0';
+          dateLabel.textContent = e.date;
+
+          const barBg = document.createElement('div');
+          barBg.className = 'flex-1 bg-gray-700 rounded-full h-4 overflow-hidden';
+          const barFill = document.createElement('div');
+          barFill.className = `h-4 rounded-full ${ppmClass} transition-all duration-500`;
+          barFill.style.width = widthPct.toFixed(1) + '%';
+          barBg.appendChild(barFill);
+
+          const ppmLabel = document.createElement('span');
+          ppmLabel.className = 'text-gray-400 w-20 text-right shrink-0';
+          ppmLabel.textContent = e.ppm.toLocaleString() + ' PPM';
+
+          row.appendChild(dateLabel);
+          row.appendChild(barBg);
+          row.appendChild(ppmLabel);
+          trendChart.appendChild(row);
+        });
+      }
+
+      function renderStats() {
+        const totalProd = entries.reduce((s, e) => s + e.production, 0);
+        const totalDef = entries.reduce((s, e) => s + e.defects, 0);
+        const overallPPM = calcPPM(totalDef, totalProd);
+        document.getElementById('statTotalProd').textContent = totalProd.toLocaleString();
+        document.getElementById('statTotalDef').textContent = totalDef.toLocaleString();
+        document.getElementById('statPPM').textContent = overallPPM.toLocaleString();
+      }
+
+      function renderAll() {
+        renderTable();
+        renderPareto();
+        renderTrend();
+        renderStats();
+      }
+
+      addEntryBtn.addEventListener('click', addEntry);
+      [batchIdEl, productionEl, defectsEl, entryDateEl].forEach(el => {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
+      });
+
+      sortColEl.addEventListener('change', () => { sortCol = sortColEl.value; renderTable(); });
+      sortDirEl.addEventListener('click', () => {
+        sortAsc = !sortAsc;
+        sortDirEl.textContent = sortAsc ? '▲' : '▼';
+        renderTable();
+      });
+
+      clearAllBtn.addEventListener('click', () => {
+        if (entries.length === 0) return;
+        if (confirm('Clear all log entries?')) {
+          entries = [];
+          saveState();
+          renderAll();
+        }
+      });
+
+      loadState();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
